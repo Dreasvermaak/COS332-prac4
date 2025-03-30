@@ -1,0 +1,42 @@
+Chapter 4
+ Practical assignment 4
+ 4.1 Background
+ HTMLmakesprovisionfor forms that enable one to enter data into fields and then
+ send the data to the server. Consider the following HTML:
+ <form method="get" action="http://www.cs.up.ac.za/">
+ Number: <input type="text" name="n" size="20">
+ <input type="submit" value="Do it">
+ </form>
+ This will display a form on the screen with a field in which one may enter a
+ number. When one clicks on the ‘Do it’ button the specified action will be per
+formed; in this case the home page for Computer Science will simply be loaded.
+ As has been explained in practical assignment 3, a GET request will be sent to
+ the server concerned (www.cs.up.ac.za in this case). Since there is a data
+ f
+ ield, the content specification (/ in the GET request will be followed by a ques
+tion mark, which will in turn be followed by the name of the field (n), an equals
+ sign and then the value that has been entered by the user. If the user, for example,
+ enters 33 and clicks on ‘Do it’ the following GET request will be sent to the server:
+ GET /?n=33
+ Host: www.cs.up.ac.za
+ Do your own experiments to see how forms with more than one field work.
+ For more information search the web using your favourite search engine; keep
+ your eyes open for tutorials. Also look again at RFC 2616 if necessary. Those
+ who want to do more, note the POST method as an alternative for GET.
+ 23
+4.2 Your assignment
+ Write (another) program that keeps record of friends’ telephone numbers with all
+ the usual operations such as insertion, searching and deletion. In this case, how
+ever, your program has to be a server that should be used via a standard browser
+ (such as Chrome; except for the initial activation there must be no direct interac
+tion with the server).
+ As a challenge you may try to not only store names and numbers, but also
+ photographs or other pictures. Note that, while it is possible to direct a browser to
+ fetch a picture from the client machine, the real challenge is to transmit the picture
+ from the server to the browser using HTTP. This involves encoding and serving
+ appropriate headers; these are the reasons why serving a picture may warrant an
+ additional mark or two.
+ 4.3 Assessment
+ A working program will be awarded 8 out of 10. To earn a higher mark your
+ program has to do more than just the basics- in particular should it demonstrate
+ that you understand something of the HTTP RFC
