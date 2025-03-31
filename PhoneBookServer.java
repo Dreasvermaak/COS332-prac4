@@ -18,61 +18,62 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class PhoneBookServer {
-    private static final int PORT = 8080;
-    private static final String CONTACTS_FILE = "contacts.dat";
-    private static List<Contact> contacts = new ArrayList<>();
+    // setting up basic stuff
+    private static final int PORT = 8080; // the port our server runs on
+    private static final String CONTACTS_FILE = "contacts.dat"; // where we save our contacts
+    private static List<Contact> contacts = new ArrayList<>(); // our in-memory list of contacts
 
     public static void main(String[] args) throws IOException {
-        // Load existing contacts
+        // get existing contacts first
         loadContacts();
 
-        // Create HTTP server
+        // setup the HTTP server - this is from Java docs
         HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
         
-        // Set up context handlers for different paths
-        server.createContext("/", new HomeHandler());
-        server.createContext("/add", new AddContactHandler());
-        server.createContext("/search", new SearchContactHandler());
-        server.createContext("/delete", new DeleteContactHandler());
-        server.createContext("/image", new ImageHandler());
+        // map URLs to their handlers
+        server.createContext("/", new HomeHandler()); // homepage
+        server.createContext("/add", new AddContactHandler()); // adding contacts
+        server.createContext("/search", new SearchContactHandler()); // searching contacts
+        server.createContext("/delete", new DeleteContactHandler()); // deleting contacts
+        server.createContext("/image", new ImageHandler()); // displaying contact images
         
-        // Start the server
-        server.setExecutor(null);
+        // fire up the server
+        server.setExecutor(null); // just use default executor
         server.start();
         
         System.out.println("Server started on port " + PORT);
         System.out.println("Open your browser and navigate to http://localhost:" + PORT);
     }
 
-    // Load contacts from file
+    // load contacts from our saved file
     private static void loadContacts() {
         try {
             File file = new File(CONTACTS_FILE);
-            if (file.exists()) {
+            if (file.exists()) { // only try to load if file exists
                 try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
-                    contacts = (List<Contact>) ois.readObject();
+                    contacts = (List<Contact>) ois.readObject(); // read the whole list at once
                 }
             }
         } catch (Exception e) {
             System.err.println("Error loading contacts: " + e.getMessage());
-            contacts = new ArrayList<>();
+            contacts = new ArrayList<>(); // just start with empty list if something goes wrong
         }
     }
 
-    // Save contacts to file
+    // save contacts to file
     private static void saveContacts() {
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(CONTACTS_FILE))) {
-            oos.writeObject(contacts);
+            oos.writeObject(contacts); // write the whole list at once
         } catch (Exception e) {
             System.err.println("Error saving contacts: " + e.getMessage());
         }
     }
 
-    // Parse query parameters from URL
+    // process URL parameters into a map
     private static Map<String, String> parseQueryParams(String query) {
         Map<String, String> params = new HashMap<>();
         if (query != null && !query.isEmpty()) {
-            String[] pairs = query.split("&");
+            String[] pairs = query.split("&"); // parameters are separated by &
             for (String pair : pairs) {
                 int idx = pair.indexOf("=");
                 if (idx > 0) {
@@ -85,7 +86,7 @@ public class PhoneBookServer {
         return params;
     }
 
-    // Parse form data from POST request
+    // get form data from POST requests
     private static Map<String, String> parseFormData(InputStream is) throws IOException {
         BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
         StringBuilder requestBody = new StringBuilder();
@@ -93,19 +94,19 @@ public class PhoneBookServer {
         while ((line = br.readLine()) != null) {
             requestBody.append(line);
         }
-        return parseQueryParams(requestBody.toString());
+        return parseQueryParams(requestBody.toString()); // reuse our query parser
     }
 
-    // Home page handler
+    // handle the home page
     static class HomeHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            // Get query parameters if any
+            // grab any URL parameters
             String query = exchange.getRequestURI().getQuery();
             Map<String, String> params = parseQueryParams(query);
             String message = params.getOrDefault("message", "");
 
-            // Create HTML response
+            // build the HTML for our page
             StringBuilder response = new StringBuilder();
             response.append("<!DOCTYPE html><html><head><title>Phone Book</title>");
             response.append("<style>");
@@ -127,17 +128,17 @@ public class PhoneBookServer {
             response.append("</style>");
             response.append("</head><body>");
             
-            // Add message if there is one
+            // show success/error message if we have one
             if (!message.isEmpty()) {
                 response.append("<div class=\"message\">").append(message).append("</div>");
             }
             
-            // Title
+            // page title
             response.append("<h1>Phone Book Application</h1>");
             
             response.append("<div class=\"container\">");
             
-            // Add contact form
+            // form for adding contacts
             response.append("<div class=\"section\">");
             response.append("<h2>Add Contact</h2>");
             response.append("<form action=\"/add\" method=\"post\" enctype=\"multipart/form-data\">");
@@ -150,7 +151,7 @@ public class PhoneBookServer {
             response.append("</form>");
             response.append("</div>");
             
-            // Search form
+            // form for searching contacts
             response.append("<div class=\"section\">");
             response.append("<h2>Search Contact</h2>");
             response.append("<form action=\"/search\" method=\"get\">");
@@ -161,7 +162,7 @@ public class PhoneBookServer {
             
             response.append("</div>");
             
-            // Display contacts
+            // show all contacts in a table
             response.append("<h2>Contacts</h2>");
             response.append("<table>");
             response.append("<tr><th>Name</th><th>Phone</th><th>Cell Phone</th><th>Photo</th><th>Action</th></tr>");
@@ -173,10 +174,10 @@ public class PhoneBookServer {
                 response.append("<td>").append(contact.getPhone()).append("</td>");
                 response.append("<td>").append(contact.getCellPhone()).append("</td>");
                 
-                // Display image if available
+                // show image if available
                 response.append("<td>");
                 if (contact.hasPhoto()) {
-                    // Add a timestamp parameter to prevent caching
+                    // add timestamp to prevent browser caching
                     String timestamp = String.valueOf(System.currentTimeMillis());
                     response.append("<div style=\"width: 100px; height: 100px; display: flex; align-items: center; justify-content: center; background-color: #f5f5f5;\">");
                     response.append("<img src=\"/image?id=").append(i).append("&t=").append(timestamp).append("\" class=\"contact-image\" alt=\"Photo of ").append(contact.getName()).append("\">");
@@ -186,7 +187,7 @@ public class PhoneBookServer {
                 }
                 response.append("</td>");
                 
-                // Delete button
+                // delete button for each contact
                 response.append("<td><form action=\"/delete\" method=\"post\">");
                 response.append("<input type=\"hidden\" name=\"id\" value=\"").append(i).append("\">");
                 response.append("<button type=\"submit\">Delete</button>");
@@ -198,7 +199,7 @@ public class PhoneBookServer {
             response.append("</table>");
             response.append("</body></html>");
 
-            // Send response
+            // send back our HTML page
             exchange.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
             exchange.sendResponseHeaders(200, response.length());
             
@@ -208,7 +209,7 @@ public class PhoneBookServer {
         }
     }
 
-    // Add contact handler
+    // handles adding new contacts
     static class AddContactHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -216,13 +217,13 @@ public class PhoneBookServer {
                 String contentType = exchange.getRequestHeaders().getFirst("Content-Type");
                 
                 try {
-                    // Check if it's a simple form or multipart form
+                    // check if it's a regular form or one with file uploads
                     if (contentType != null && contentType.startsWith("multipart/form-data")) {
-                        // Process multipart form data using a more reliable approach
+                        // handle multipart form data - needed for file uploads
                         String boundary = extractBoundary(contentType);
                         
                         if (boundary != null) {
-                            // Read all data from input stream
+                            // read all the request data
                             ByteArrayOutputStream baos = new ByteArrayOutputStream();
                             byte[] buffer = new byte[4096];
                             int bytesRead;
@@ -232,10 +233,10 @@ public class PhoneBookServer {
                             }
                             byte[] requestData = baos.toByteArray();
                             
-                            // Parse the multipart form data
+                            // parse all the form fields and files
                             Map<String, Object> formData = parseMultipartForm(requestData, boundary);
                             
-                            // Get the form fields
+                            // grab our form values
                             String name = (String) formData.getOrDefault("name", "");
                             String phone = (String) formData.getOrDefault("phone", "");
                             String cellPhone = (String) formData.getOrDefault("cellPhone", "");
@@ -244,12 +245,12 @@ public class PhoneBookServer {
                             if (!name.isEmpty() && !phone.isEmpty() && !cellPhone.isEmpty()) {
                                 Contact contact = new Contact(name, phone, cellPhone);
                                 
-                                // Set photo if available
+                                // add photo if we have one
                                 if (photoData != null && photoData.length > 0) {
                                     System.out.println("Adding photo for contact: " + name + " (size: " + photoData.length + " bytes)");
                                     contact.setPhoto(photoData);
                                     
-                                    // Debug output to verify image data
+                                    // quick check to make sure photo was saved
                                     byte[] savedPhoto = contact.getPhoto();
                                     if (savedPhoto != null) {
                                         System.out.println("Verified photo storage: " + savedPhoto.length + " bytes");
@@ -261,14 +262,14 @@ public class PhoneBookServer {
                                 contacts.add(contact);
                                 saveContacts();
                                 
-                                // Redirect to home page with success message
+                                // redirect back with success message
                                 exchange.getResponseHeaders().set("Location", "/?message=Contact+added+successfully");
                                 exchange.sendResponseHeaders(302, -1);
                                 return;
                             }
                         }
                     } else {
-                        // Simple form data
+                        // simple form data without files
                         Map<String, String> formData = parseFormData(exchange.getRequestBody());
                         
                         String name = formData.getOrDefault("name", "");
@@ -279,7 +280,7 @@ public class PhoneBookServer {
                             contacts.add(new Contact(name, phone, cellPhone));
                             saveContacts();
                             
-                            // Redirect to home page with success message
+                            // redirect back with success message
                             exchange.getResponseHeaders().set("Location", "/?message=Contact+added+successfully");
                             exchange.sendResponseHeaders(302, -1);
                             return;
@@ -290,16 +291,16 @@ public class PhoneBookServer {
                     e.printStackTrace();
                 }
                 
-                // Error - redirect back to home
+                // if we get here, something went wrong
                 exchange.getResponseHeaders().set("Location", "/?message=Error+adding+contact");
                 exchange.sendResponseHeaders(302, -1);
             } else {
-                // Method not allowed
+                // only POST is allowed
                 exchange.sendResponseHeaders(405, -1);
             }
         }
         
-        // Extract boundary from content type
+        // get the boundary for multipart forms
         private String extractBoundary(String contentType) {
             if (contentType != null && contentType.toLowerCase().startsWith("multipart/form-data")) {
                 int boundaryIndex = contentType.indexOf("boundary=");
@@ -310,18 +311,18 @@ public class PhoneBookServer {
             return null;
         }
         
-        // Parse multipart form data - improved version that handles binary data
+        // this is the tricky part - handling file uploads
         private Map<String, Object> parseMultipartForm(byte[] data, String boundary) throws IOException {
             Map<String, Object> formFields = new HashMap<>();
             
             try {
-                // Add two dashes before boundary as per spec
+                // multipart forms start with -- and then the boundary
                 String fullBoundary = "--" + boundary;
                 
-                // Convert data to string for header processing
+                // we need this to process the headers
                 String dataStr = new String(data, StandardCharsets.ISO_8859_1);
                 
-                // Find boundary positions
+                // find all the boundaries in the data
                 int pos = 0;
                 int boundaryLength = fullBoundary.length();
                 List<Integer> positions = new ArrayList<>();
@@ -331,43 +332,43 @@ public class PhoneBookServer {
                     pos += boundaryLength;
                 }
                 
-                // Process each part
+                // process each part between boundaries
                 for (int i = 0; i < positions.size() - 1; i++) {
                     int start = positions.get(i) + boundaryLength;
                     int end = positions.get(i + 1);
                     
-                    // Skip CRLF after boundary
+                    // skip CRLF after boundary
                     if (start < dataStr.length() && dataStr.charAt(start) == '\r' && start + 1 < dataStr.length() && dataStr.charAt(start + 1) == '\n') {
                         start += 2;
                     }
                     
-                    // Find headers end (double CRLF)
+                    // find where headers end and content starts (double CRLF)
                     int headersEnd = dataStr.indexOf("\r\n\r\n", start);
                     if (headersEnd == -1 || headersEnd >= end) continue;
                     
                     String headers = dataStr.substring(start, headersEnd);
                     int contentStart = headersEnd + 4; // Skip \r\n\r\n
                     
-                    // Check for CRLF before next boundary
+                    // remove CRLF before next boundary
                     int contentEnd = end;
                     if (contentEnd - 2 >= contentStart && dataStr.charAt(contentEnd - 2) == '\r' && dataStr.charAt(contentEnd - 1) == '\n') {
                         contentEnd -= 2;
                     }
                     
-                    // Extract field name and check if it's a file
+                    // get the field name and check if it's a file
                     String fieldName = extractFieldName(headers);
                     boolean isFile = headers.contains("filename=\"") && !headers.contains("filename=\"\"");
                     
                     if (fieldName == null) continue;
                     
                     if (isFile) {
-                        // For file uploads, store the binary data
+                        // for files, keep the raw bytes
                         byte[] fileData = new byte[contentEnd - contentStart];
                         System.arraycopy(data, contentStart, fileData, 0, fileData.length);
                         formFields.put(fieldName, fileData);
                         System.out.println("Found file for field: " + fieldName + ", size: " + fileData.length + " bytes");
                     } else {
-                        // For regular fields, convert to string
+                        // for regular fields, convert to string
                         String value = dataStr.substring(contentStart, contentEnd);
                         formFields.put(fieldName, value);
                     }
@@ -380,7 +381,7 @@ public class PhoneBookServer {
             return formFields;
         }
         
-        // Find the end of headers (double CRLF)
+        // find where the headers end
         private int findHeaderEnd(byte[] data, int start, int end) {
             for (int i = start; i < end - 3; i++) {
                 if (data[i] == '\r' && data[i + 1] == '\n' && data[i + 2] == '\r' && data[i + 3] == '\n') {
@@ -390,7 +391,7 @@ public class PhoneBookServer {
             return -1;
         }
         
-        // Extract field name from headers
+        // get the field name from the headers
         private String extractFieldName(String headers) {
             int nameStart = headers.indexOf("name=\"");
             if (nameStart != -1) {
@@ -404,16 +405,16 @@ public class PhoneBookServer {
         }
     }
 
-    // Search contact handler
+    // handles searching for contacts
     static class SearchContactHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            // Get query parameters
+            // get the search query
             String query = exchange.getRequestURI().getQuery();
             Map<String, String> params = parseQueryParams(query);
             String searchQuery = params.getOrDefault("query", "").toLowerCase();
             
-            // Create HTML response
+            // build HTML for search results
             StringBuilder response = new StringBuilder();
             response.append("<!DOCTYPE html><html><head><title>Search Results</title>");
             response.append("<style>");
@@ -430,7 +431,7 @@ public class PhoneBookServer {
             response.append("<h1>Search Results for \"").append(searchQuery).append("\"</h1>");
             response.append("<a href=\"/\">Back to Home</a>");
             
-            // Display matching contacts
+            // show matching contacts in a table
             response.append("<table>");
             response.append("<tr><th>Name</th><th>Phone</th><th>Cell Phone</th><th>Photo</th></tr>");
             
@@ -446,10 +447,10 @@ public class PhoneBookServer {
                     response.append("<td>").append(contact.getPhone()).append("</td>");
                     response.append("<td>").append(contact.getCellPhone()).append("</td>");
                     
-                    // Display image if available
+                    // show image if available
                     response.append("<td>");
                     if (contact.hasPhoto()) {
-                        // Add a timestamp parameter to prevent caching
+                        // add timestamp to prevent browser caching
                         String timestamp = String.valueOf(System.currentTimeMillis());
                         response.append("<div style=\"width: 100px; height: 100px; display: flex; align-items: center; justify-content: center; background-color: #f5f5f5;\">");
                         response.append("<img src=\"/image?id=").append(i).append("&t=").append(timestamp).append("\" class=\"contact-image\" alt=\"Photo of ").append(contact.getName()).append("\">");
@@ -465,13 +466,14 @@ public class PhoneBookServer {
             
             response.append("</table>");
             
+            // show message if no results found
             if (!foundResults) {
                 response.append("<p>No contacts found matching \"").append(searchQuery).append("\"</p>");
             }
             
             response.append("</body></html>");
 
-            // Send response
+            // send the response
             exchange.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
             exchange.sendResponseHeaders(200, response.length());
             
@@ -481,7 +483,7 @@ public class PhoneBookServer {
         }
     }
 
-    // Delete contact handler
+    // handles deleting contacts
     static class DeleteContactHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -495,33 +497,33 @@ public class PhoneBookServer {
                         contacts.remove(id);
                         saveContacts();
                         
-                        // Redirect to home page with success message
+                        // redirect with success message
                         exchange.getResponseHeaders().set("Location", "/?message=Contact+deleted+successfully");
                         exchange.sendResponseHeaders(302, -1);
                         return;
                     }
                 } catch (NumberFormatException e) {
-                    // Invalid ID format
+                    // bad ID format - just ignore
                 }
                 
-                // Error - redirect back to home
+                // if we get here, something went wrong
                 exchange.getResponseHeaders().set("Location", "/?message=Error+deleting+contact");
                 exchange.sendResponseHeaders(302, -1);
             } else {
-                // Method not allowed
+                // only POST is allowed
                 exchange.sendResponseHeaders(405, -1);
             }
         }
     }
 
-    // Helper method to detect image type from binary data
+    // try to figure out what type of image we're dealing with
     private static String detectImageType(byte[] data) {
         if (data == null || data.length < 2) {
             System.out.println("Image data is too short or null");
-            return "image/jpeg"; // Default
+            return "image/jpeg"; // just assume JPEG if we can't tell
         }
         
-        // Print the first few bytes for debugging
+        // print the first few bytes for debugging
         System.out.println("Image signature bytes: " + 
                            String.format("%02X %02X %02X %02X", 
                                          data.length > 0 ? data[0] & 0xFF : 0, 
@@ -529,13 +531,13 @@ public class PhoneBookServer {
                                          data.length > 2 ? data[2] & 0xFF : 0,
                                          data.length > 3 ? data[3] & 0xFF : 0));
         
-        // Check for JPEG header (FF D8)
+        // JPEG starts with FF D8
         if ((data[0] & 0xFF) == 0xFF && (data[1] & 0xFF) == 0xD8) {
             System.out.println("Detected JPEG image");
             return "image/jpeg";
         }
         
-        // Check for PNG header (89 50 4E 47)
+        // PNG starts with 89 50 4E 47
         if (data.length >= 4 && 
             (data[0] & 0xFF) == 0x89 && 
             (data[1] & 0xFF) == 0x50 && 
@@ -545,7 +547,7 @@ public class PhoneBookServer {
             return "image/png";
         }
         
-        // Check for GIF header (47 49 46)
+        // GIF starts with 47 49 46
         if (data.length >= 3 && 
             (data[0] & 0xFF) == 0x47 && 
             (data[1] & 0xFF) == 0x49 && 
@@ -554,16 +556,16 @@ public class PhoneBookServer {
             return "image/gif";
         }
         
-        // Default to JPEG if unknown
+        // just guess JPEG if we can't figure it out
         System.out.println("Unknown image format, defaulting to JPEG");
         return "image/jpeg";
     }
     
-    // Serve images
+    // handles serving images for contacts
     static class ImageHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            // Get the image ID from query parameters
+            // get the contact ID from the URL
             String query = exchange.getRequestURI().getQuery();
             Map<String, String> params = parseQueryParams(query);
             String idStr = params.getOrDefault("id", "");
@@ -574,51 +576,46 @@ public class PhoneBookServer {
                     Contact contact = contacts.get(id);
                     byte[] imageData = contact.getPhoto();
                     
-                    // Debug output to verify we're getting the right contact and image
+                    // print some debug info
                     System.out.println("Serving image for contact: " + contact.getName() + 
                                        " (ID: " + id + ") with image size: " + 
                                        (imageData != null ? imageData.length : 0) + " bytes");
                     
                     if (imageData == null || imageData.length == 0) {
-                        // No image data available
+                        // no image data
                         exchange.sendResponseHeaders(404, -1);
                         return;
                     }
                     
-                    // Attempt to detect image type from the data
+                    // try to figure out what kind of image it is
                     String contentType = detectImageType(imageData);
                     
-                    // Add a unique query parameter to prevent browser caching
+                    // add timestamp to prevent caching
                     String cacheBreaker = String.valueOf(System.currentTimeMillis());
                     
-                    // Set appropriate headers
+                    // set headers and send the image
                     exchange.getResponseHeaders().set("Content-Type", contentType);
                     exchange.getResponseHeaders().set("Cache-Control", "no-cache, no-store, must-revalidate");
                     exchange.getResponseHeaders().set("Pragma", "no-cache");
                     exchange.getResponseHeaders().set("Expires", "0");
                     exchange.sendResponseHeaders(200, imageData.length);
                     
-                    // Write the image data to the response
+                    // send the actual image data
                     try (OutputStream os = exchange.getResponseBody()) {
                         os.write(imageData);
-                        os.flush();
                     }
                     return;
-                } else {
-                    System.out.println("Image not found or contact has no photo. ID: " + id + 
-                                      ", valid ID range: 0-" + (contacts.size()-1) + 
-                                      ", has photo: " + (id < contacts.size() ? contacts.get(id).hasPhoto() : "N/A"));
                 }
             } catch (NumberFormatException e) {
-                // Invalid ID format
+                // bad ID format
                 System.err.println("Invalid image ID: " + idStr);
             } catch (Exception e) {
-                // Other errors
+                // other errors
                 System.err.println("Error serving image: " + e.getMessage());
                 e.printStackTrace();
             }
             
-            // Image not found or invalid ID
+            // if we get here, something went wrong
             exchange.sendResponseHeaders(404, -1);
         }
     }
